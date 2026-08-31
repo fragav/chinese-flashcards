@@ -123,6 +123,7 @@
   }
   .btn-wrong { background: var(--red); }
   .btn-right { background: var(--green); }
+  .btn-unknown { background: #7a6a3a; }
 
   .session-bar {
     display: flex;
@@ -226,10 +227,11 @@
     </div>
     <div class="answers" id="answers">
       <button class="btn-wrong" id="btn-wrong">✗ Errei</button>
+      <button class="btn-unknown" id="btn-unknown">? Não sabia</button>
       <button class="btn-right" id="btn-right">✓ Acertei</button>
     </div>
     <div class="session-bar">
-      <span>Sessão: <b class="ok" id="s-right">0</b> acertos · <b class="no" id="s-wrong">0</b> erros</span>
+      <span>Sessão: <b class="ok" id="s-right">0</b> acertos · <b class="no" id="s-wrong">0</b> erros · <b id="s-unknown">0</b> não sabia</span>
       <span id="s-count"></span>
     </div>
   </section>
@@ -367,9 +369,9 @@ const KEY = "zh-flash-v1";
 let stats = {};
 try { stats = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { stats = {}; }
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(stats)); } catch (e) {} };
-const get = h => stats[h] || { c: 0, w: 0 };
+const get = h => { const s = stats[h] || {}; return { c: s.c || 0, w: s.w || 0, u: s.u || 0 }; };
 
-let current = null, lastHanzi = null, sRight = 0, sWrong = 0;
+let current = null, lastHanzi = null, sRight = 0, sWrong = 0, sUnknown = 0;
 
 // ponytail: sorteio ponderado simples — erros pesam mais, dominados quase saem; SRS real (Leitner/SM-2) se um dia precisar
 function pickCard() {
@@ -377,9 +379,10 @@ function pickCard() {
   const weights = D.map(([h]) => {
     if (h === lastHanzi) return 0;
     const s = get(h);
-    if (s.c === 0 && s.w === 0) return 3;        // nunca visto
-    if (s.c >= 3 && s.w === 0) return 0.3;       // dominado
-    return 1 + s.w * 2;                          // errado pesa mais
+    const errs = s.w + s.u;
+    if (s.c === 0 && errs === 0) return 3;       // nunca visto
+    if (s.c >= 3 && errs === 0) return 0.3;      // dominado
+    return 1 + errs * 2;                         // errado/não sabia pesa mais
   });
   let total = weights.reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
@@ -413,17 +416,21 @@ cardEl.addEventListener("click", () => {
   answersEl.classList.add("show");
 });
 
-function answer(right) {
+function answer(type) {
   const s = get(current[0]);
-  if (right) { s.c++; sRight++; } else { s.w++; sWrong++; }
+  if (type === "right") { s.c++; sRight++; }
+  else if (type === "wrong") { s.w++; sWrong++; }
+  else { s.u++; sUnknown++; }
   stats[current[0]] = s;
   save();
   $("s-right").textContent = sRight;
   $("s-wrong").textContent = sWrong;
+  $("s-unknown").textContent = sUnknown;
   showCard();
 }
-$("btn-right").addEventListener("click", () => answer(true));
-$("btn-wrong").addEventListener("click", () => answer(false));
+$("btn-right").addEventListener("click", () => answer("right"));
+$("btn-wrong").addEventListener("click", () => answer("wrong"));
+$("btn-unknown").addEventListener("click", () => answer("unknown"));
 
 // ---- stats view ----
 function renderStats() {
@@ -432,11 +439,12 @@ function renderStats() {
   const missed = [];
   for (const [h, p, m] of D) {
     const s = get(h);
-    const n = s.c + s.w;
+    const errs = s.w + s.u;
+    const n = s.c + errs;
     if (n > 0) seen++;
     total += n; right += s.c;
-    if (s.c >= 3 && s.c > s.w) mastered++;
-    if (s.w > 0) missed.push({ h, p, m, ...s });
+    if (s.c >= 3 && s.c > errs) mastered++;
+    if (errs > 0) missed.push({ h, p, m, errs, ...s });
   }
   $("st-total").textContent = total;
   $("st-acc").textContent = total ? Math.round(right / total * 100) + "%" : "–";
@@ -444,14 +452,17 @@ function renderStats() {
   $("st-mastered").textContent = mastered + " / " + D.length;
   $("st-bar").style.width = (mastered / D.length * 100) + "%";
 
-  missed.sort((a, b) => b.w - a.w || a.c - b.c);
+  missed.sort((a, b) => b.errs - a.errs || a.c - b.c);
   const list = $("miss-list");
   list.innerHTML = "";
   missed.slice(0, 10).forEach(x => {
+    const parts = [];
+    if (x.w > 0) parts.push(`<span class="w">${x.w} erro${x.w > 1 ? "s" : ""}</span>`);
+    if (x.u > 0) parts.push(`<span class="w">${x.u} não sabia</span>`);
     const li = document.createElement("li");
     li.innerHTML = `<div class="zi">${x.h}</div>
       <div class="info"><div class="p">${x.p}</div><div class="m">${x.m}</div></div>
-      <div class="score"><span class="w">${x.w} erro${x.w > 1 ? "s" : ""}</span><br>${x.c} acerto${x.c === 1 ? "" : "s"}</div>`;
+      <div class="score">${parts.join("<br>")}<br>${x.c} acerto${x.c === 1 ? "" : "s"}</div>`;
     list.appendChild(li);
   });
   $("miss-empty").classList.toggle("hidden", missed.length > 0);
