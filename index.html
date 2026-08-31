@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>汉字 Flashcards</title>
+<style>
+  :root {
+    --bg: #12121a;
+    --card: #1e1e2a;
+    --card-back: #26263a;
+    --text: #f0f0f5;
+    --muted: #8a8a9e;
+    --accent: #e05a5a;
+    --green: #3fae6a;
+    --red: #d9534f;
+    --border: #33334a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  header {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+  }
+  header h1 { font-size: 1.1rem; font-weight: 600; }
+  header h1 span { color: var(--accent); }
+  .tabs button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-left: 6px;
+  }
+  .tabs button.active { color: var(--text); border-color: var(--accent); }
+  main {
+    width: 100%;
+    max-width: 480px;
+    padding: 8px 20px 40px;
+    flex: 1;
+  }
+
+  /* ---- card ---- */
+  .scene { perspective: 1200px; margin-top: 12px; }
+  .flashcard {
+    position: relative;
+    width: 100%;
+    height: 340px;
+    transform-style: preserve-3d;
+    transition: transform 0.45s cubic-bezier(.4,.1,.2,1);
+    cursor: pointer;
+  }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+  }
+  .face.front { background: var(--card); }
+  .face.back { background: var(--card-back); transform: rotateY(180deg); }
+  .hanzi { font-size: 6rem; line-height: 1; }
+  .face.back .hanzi { font-size: 3rem; }
+  .pinyin { font-size: 1.6rem; color: var(--accent); }
+  .meaning { font-size: 1.3rem; text-align: center; }
+  .hint { color: var(--muted); font-size: 0.8rem; position: absolute; bottom: 16px; }
+
+  .answers {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    visibility: hidden;
+  }
+  .answers.show { visibility: visible; }
+  .answers button {
+    flex: 1;
+    padding: 14px;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    color: #fff;
+  }
+  .btn-wrong { background: var(--red); }
+  .btn-right { background: var(--green); }
+
+  .session-bar {
+    display: flex;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 18px;
+  }
+  .session-bar b.ok { color: var(--green); }
+  .session-bar b.no { color: var(--red); }
+
+  /* ---- stats ---- */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0 20px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .stat .num { font-size: 1.5rem; font-weight: 700; }
+  .stat .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+  .progress-wrap { margin-bottom: 22px; }
+  .progress-wrap .lbl { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .progress-track {
+    height: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 999px; transition: width .3s; }
+  h2 { font-size: 0.95rem; margin-bottom: 10px; color: var(--muted); font-weight: 600; }
+  .miss-list { list-style: none; }
+  .miss-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+  }
+  .miss-list .zi { font-size: 1.6rem; width: 48px; }
+  .miss-list .info { flex: 1; }
+  .miss-list .info .p { color: var(--accent); font-size: 0.85rem; }
+  .miss-list .info .m { font-size: 0.85rem; color: var(--muted); }
+  .miss-list .score { font-size: 0.8rem; text-align: right; }
+  .miss-list .score .w { color: var(--red); font-weight: 700; }
+  .empty { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 30px 0; }
+  .reset {
+    margin-top: 24px;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>汉字 <span>Flashcards</span></h1>
+  <nav class="tabs">
+    <button id="tab-study" class="active">Estudar</button>
+    <button id="tab-stats">Progresso</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-study">
+    <div class="scene">
+      <div class="flashcard" id="card">
+        <div class="face front">
+          <div class="hanzi" id="f-hanzi"></div>
+          <div class="hint">toque para virar</div>
+        </div>
+        <div class="face back">
+          <div class="hanzi" id="b-hanzi"></div>
+          <div class="pinyin" id="b-pinyin"></div>
+          <div class="meaning" id="b-meaning"></div>
+        </div>
+      </div>
+    </div>
+    <div class="answers" id="answers">
+      <button class="btn-wrong" id="btn-wrong">✗ Errei</button>
+      <button class="btn-right" id="btn-right">✓ Acertei</button>
+    </div>
+    <div class="session-bar">
+      <span>Sessão: <b class="ok" id="s-right">0</b> acertos · <b class="no" id="s-wrong">0</b> erros</span>
+      <span id="s-count"></span>
+    </div>
+  </section>
+
+  <section id="view-stats" class="hidden">
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="st-total">0</div><div class="lbl">respostas</div></div>
+      <div class="stat"><div class="num" id="st-acc">–</div><div class="lbl">precisão</div></div>
+      <div class="stat"><div class="num" id="st-seen">0</div><div class="lbl">cards vistos</div></div>
+    </div>
+    <div class="progress-wrap">
+      <div class="lbl"><span>Dominados (3+ acertos, mais acertos que erros)</span><span id="st-mastered">0 / 0</span></div>
+      <div class="progress-track"><div class="progress-fill" id="st-bar" style="width:0%"></div></div>
+    </div>
+    <h2>Os que você mais erra</h2>
+    <ul class="miss-list" id="miss-list"></ul>
+    <div class="empty hidden" id="miss-empty">Nenhum erro ainda. 加油!</div>
+    <button class="reset" id="btn-reset">Zerar progresso</button>
+  </section>
+</main>
+
+<script>
+// [hanzi, pinyin, português] — HSK 1
+const DECK = [
+["我","wǒ","eu"],["你","nǐ","você"],["他","tā","ele"],["她","tā","ela"],
+["我们","wǒmen","nós"],["他们","tāmen","eles"],["好","hǎo","bom / bem"],
+["不","bù","não"],["是","shì","ser / sim"],["人","rén","pessoa"],
+["大","dà","grande"],["小","xiǎo","pequeno"],["多","duō","muito(s)"],
+["少","shǎo","pouco(s)"],["上","shàng","em cima / subir"],["下","xià","embaixo / descer"],
+["中国","Zhōngguó","China"],["爱","ài","amar"],["家","jiā","casa / família"],
+["水","shuǐ","água"],["山","shān","montanha"],["口","kǒu","boca"],
+["手","shǒu","mão"],["心","xīn","coração"],["日","rì","sol / dia"],
+["月","yuè","lua / mês"],["年","nián","ano"],["天","tiān","céu / dia"],
+["今天","jīntiān","hoje"],["明天","míngtiān","amanhã"],["昨天","zuótiān","ontem"],
+["现在","xiànzài","agora"],["时候","shíhou","momento / hora"],["点","diǎn","hora (horas)"],
+["分钟","fēnzhōng","minuto"],["岁","suì","anos (de idade)"],["号","hào","número / dia do mês"],
+["星期","xīngqī","semana"],["吃","chī","comer"],["喝","hē","beber"],
+["看","kàn","ver / olhar"],["听","tīng","ouvir / escutar"],["说","shuō","falar / dizer"],
+["读","dú","ler"],["写","xiě","escrever"],["去","qù","ir"],
+["来","lái","vir"],["回","huí","voltar"],["坐","zuò","sentar / pegar (transporte)"],
+["住","zhù","morar"],["买","mǎi","comprar"],["开","kāi","abrir / dirigir"],
+["做","zuò","fazer"],["想","xiǎng","querer / pensar"],["会","huì","saber (fazer)"],
+["能","néng","poder"],["有","yǒu","ter"],["没有","méiyǒu","não ter"],
+["在","zài","estar em"],["叫","jiào","chamar-se"],["认识","rènshi","conhecer"],
+["学习","xuéxí","estudar"],["工作","gōngzuò","trabalhar / trabalho"],["睡觉","shuìjiào","dormir"],
+["打电话","dǎ diànhuà","telefonar"],["下雨","xiàyǔ","chover"],["喜欢","xǐhuan","gostar"],
+["爸爸","bàba","pai"],["妈妈","māma","mãe"],["儿子","érzi","filho"],
+["女儿","nǚ'ér","filha"],["老师","lǎoshī","professor(a)"],["学生","xuésheng","aluno(a)"],
+["同学","tóngxué","colega de classe"],["朋友","péngyou","amigo(a)"],["医生","yīshēng","médico(a)"],
+["先生","xiānsheng","senhor"],["小姐","xiǎojiě","senhorita"],["名字","míngzi","nome"],
+["猫","māo","gato"],["狗","gǒu","cachorro"],["鱼","yú","peixe"],
+["米饭","mǐfàn","arroz (cozido)"],["面条","miàntiáo","macarrão"],["鸡蛋","jīdàn","ovo"],
+["水果","shuǐguǒ","fruta"],["苹果","píngguǒ","maçã"],["茶","chá","chá"],
+["菜","cài","prato / legume"],["钱","qián","dinheiro"],["块","kuài","yuan (dinheiro)"],
+["商店","shāngdiàn","loja"],["饭店","fàndiàn","restaurante"],["学校","xuéxiào","escola"],
+["医院","yīyuàn","hospital"],["火车站","huǒchēzhàn","estação de trem"],["飞机","fēijī","avião"],
+["出租车","chūzūchē","táxi"],["桌子","zhuōzi","mesa"],["椅子","yǐzi","cadeira"],
+["书","shū","livro"],["电脑","diànnǎo","computador"],["电视","diànshì","televisão"],
+["电影","diànyǐng","filme"],["杯子","bēizi","copo / xícara"],["衣服","yīfu","roupa"],
+["天气","tiānqì","tempo / clima"],["冷","lěng","frio"],["热","rè","quente"],
+["高兴","gāoxìng","feliz / contente"],["漂亮","piàoliang","bonito(a)"],
+["一","yī","um"],["二","èr","dois"],["三","sān","três"],
+["四","sì","quatro"],["五","wǔ","cinco"],["六","liù","seis"],
+["七","qī","sete"],["八","bā","oito"],["九","jiǔ","nove"],
+["十","shí","dez"],["零","líng","zero"],["百","bǎi","cem"],
+["谢谢","xièxie","obrigado(a)"],["不客气","bú kèqi","de nada"],["再见","zàijiàn","tchau"],
+["对不起","duìbuqǐ","desculpa"],["没关系","méi guānxi","não faz mal"],["请","qǐng","por favor"],
+["什么","shénme","o quê"],["谁","shéi","quem"],["哪","nǎ","qual"],
+["哪儿","nǎr","onde"],["怎么","zěnme","como"],["怎么样","zěnmeyàng","que tal"],
+["几","jǐ","quantos (até 10)"],["多少","duōshao","quanto(s)"],["这","zhè","este / isto"],
+["那","nà","aquele / aquilo"],["都","dōu","todos / ambos"],["很","hěn","muito"],
+["太","tài","demais"],["和","hé","e"],["的","de","partícula: posse (de)"],
+["了","le","partícula: ação concluída"],["吗","ma","partícula: pergunta"],["呢","ne","partícula: e ...?"]
+];
+
+const KEY = "zh-flash-v1";
+let stats = {};
+try { stats = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { stats = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(stats)); } catch (e) {} };
+const get = h => stats[h] || { c: 0, w: 0 };
+
+let current = null, lastHanzi = null, sRight = 0, sWrong = 0;
+
+// ponytail: sorteio ponderado simples — erros pesam mais, dominados quase saem; SRS real (Leitner/SM-2) se um dia precisar
+function pickCard() {
+  const weights = DECK.map(([h]) => {
+    if (h === lastHanzi) return 0;
+    const s = get(h);
+    if (s.c === 0 && s.w === 0) return 3;        // nunca visto
+    if (s.c >= 3 && s.w === 0) return 0.3;       // dominado
+    return 1 + s.w * 2;                          // errado pesa mais
+  });
+  let total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < DECK.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return DECK[i];
+  }
+  return DECK[0];
+}
+
+const $ = id => document.getElementById(id);
+const cardEl = $("card"), answersEl = $("answers");
+
+function showCard() {
+  current = pickCard();
+  lastHanzi = current[0];
+  cardEl.classList.remove("flipped");
+  answersEl.classList.remove("show");
+  // troca o conteúdo depois que a animação de desvirar termina
+  setTimeout(() => {
+    $("f-hanzi").textContent = current[0];
+    $("b-hanzi").textContent = current[0];
+    $("b-pinyin").textContent = current[1];
+    $("b-meaning").textContent = current[2];
+  }, current === null ? 0 : 230);
+}
+
+cardEl.addEventListener("click", () => {
+  if (cardEl.classList.contains("flipped")) return;
+  cardEl.classList.add("flipped");
+  answersEl.classList.add("show");
+});
+
+function answer(right) {
+  const s = get(current[0]);
+  if (right) { s.c++; sRight++; } else { s.w++; sWrong++; }
+  stats[current[0]] = s;
+  save();
+  $("s-right").textContent = sRight;
+  $("s-wrong").textContent = sWrong;
+  showCard();
+}
+$("btn-right").addEventListener("click", () => answer(true));
+$("btn-wrong").addEventListener("click", () => answer(false));
+
+// ---- stats view ----
+function renderStats() {
+  let total = 0, right = 0, seen = 0, mastered = 0;
+  const missed = [];
+  for (const [h, p, m] of DECK) {
+    const s = get(h);
+    const n = s.c + s.w;
+    if (n > 0) seen++;
+    total += n; right += s.c;
+    if (s.c >= 3 && s.c > s.w) mastered++;
+    if (s.w > 0) missed.push({ h, p, m, ...s });
+  }
+  $("st-total").textContent = total;
+  $("st-acc").textContent = total ? Math.round(right / total * 100) + "%" : "–";
+  $("st-seen").textContent = seen + " / " + DECK.length;
+  $("st-mastered").textContent = mastered + " / " + DECK.length;
+  $("st-bar").style.width = (mastered / DECK.length * 100) + "%";
+
+  missed.sort((a, b) => b.w - a.w || a.c - b.c);
+  const list = $("miss-list");
+  list.innerHTML = "";
+  missed.slice(0, 10).forEach(x => {
+    const li = document.createElement("li");
+    li.innerHTML = `<div class="zi">${x.h}</div>
+      <div class="info"><div class="p">${x.p}</div><div class="m">${x.m}</div></div>
+      <div class="score"><span class="w">${x.w} erro${x.w > 1 ? "s" : ""}</span><br>${x.c} acerto${x.c === 1 ? "" : "s"}</div>`;
+    list.appendChild(li);
+  });
+  $("miss-empty").classList.toggle("hidden", missed.length > 0);
+}
+
+$("btn-reset").addEventListener("click", () => {
+  if (confirm("Apagar todo o progresso?")) { stats = {}; save(); renderStats(); }
+});
+
+// ---- tabs ----
+function switchTab(study) {
+  $("view-study").classList.toggle("hidden", !study);
+  $("view-stats").classList.toggle("hidden", study);
+  $("tab-study").classList.toggle("active", study);
+  $("tab-stats").classList.toggle("active", !study);
+  if (!study) renderStats();
+}
+$("tab-study").addEventListener("click", () => switchTab(true));
+$("tab-stats").addEventListener("click", () => switchTab(false));
+
+showCard();
+</script>
+</body>
+</html>
