@@ -47,6 +47,23 @@
     margin-left: 6px;
   }
   .tabs button.active { color: var(--text); border-color: var(--accent); }
+  .levels {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .levels button {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 0;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .levels button.active { color: #fff; background: var(--accent); border-color: var(--accent); }
   main {
     width: 100%;
     max-width: 480px;
@@ -188,6 +205,11 @@
 </header>
 
 <main>
+  <div class="levels">
+    <button data-lvl="1">HSK 1</button>
+    <button data-lvl="2">HSK 2</button>
+    <button data-lvl="all">Todos</button>
+  </div>
   <section id="view-study">
     <div class="scene">
       <div class="flashcard" id="card">
@@ -231,7 +253,7 @@
 
 <script>
 // [hanzi, pinyin, português] — HSK 1
-const DECK = [
+const DECK1 = [
 ["我","wǒ","eu"],["你","nǐ","você"],["他","tā","ele"],["她","tā","ela"],
 ["我们","wǒmen","nós"],["他们","tāmen","eles"],["好","hǎo","bom / bem"],
 ["不","bù","não"],["是","shì","ser / sim"],["人","rén","pessoa"],
@@ -283,6 +305,64 @@ const DECK = [
 ["了","le","partícula: ação concluída"],["吗","ma","partícula: pergunta"],["呢","ne","partícula: e ...?"]
 ];
 
+// HSK 2 (sem repetir palavras já no nível 1)
+const DECK2 = [
+["吧","ba","partícula: sugestão"],["白","bái","branco"],["帮助","bāngzhù","ajudar"],
+["报纸","bàozhǐ","jornal"],["比","bǐ","comparar / do que"],["别","bié","não (imperativo)"],
+["宾馆","bīnguǎn","hotel"],["长","cháng","comprido / longo"],["唱歌","chànggē","cantar"],
+["出","chū","sair"],["穿","chuān","vestir"],["次","cì","vez"],
+["从","cóng","de / desde"],["错","cuò","errado"],["打篮球","dǎ lánqiú","jogar basquete"],
+["大家","dàjiā","todo mundo"],["到","dào","chegar"],["得","de","partícula: complemento (bem/mal)"],
+["等","děng","esperar"],["弟弟","dìdi","irmão mais novo"],["第一","dì-yī","primeiro"],
+["懂","dǒng","entender"],["对","duì","certo / correto"],["房间","fángjiān","quarto"],
+["非常","fēicháng","extremamente"],["服务员","fúwùyuán","garçom / atendente"],["高","gāo","alto"],
+["告诉","gàosu","contar / dizer"],["哥哥","gēge","irmão mais velho"],["给","gěi","dar / para"],
+["公共汽车","gōnggòng qìchē","ônibus"],["公司","gōngsī","empresa"],["贵","guì","caro"],
+["过","guo","partícula: experiência (já ...)"],["还","hái","ainda"],["孩子","háizi","criança"],
+["好吃","hǎochī","gostoso"],["黑","hēi","preto"],["红","hóng","vermelho"],
+["机场","jīchǎng","aeroporto"],["件","jiàn","medida: peça (roupa, assunto)"],["教室","jiàoshì","sala de aula"],
+["姐姐","jiějie","irmã mais velha"],["介绍","jièshào","apresentar"],["进","jìn","entrar"],
+["近","jìn","perto"],["就","jiù","logo / então"],["觉得","juéde","achar / sentir"],
+["咖啡","kāfēi","café"],["开始","kāishǐ","começar"],["考试","kǎoshì","prova / exame"],
+["可能","kěnéng","talvez / possível"],["可以","kěyǐ","poder (permissão)"],["课","kè","aula"],
+["快","kuài","rápido"],["快乐","kuàilè","feliz / alegre"],["累","lèi","cansado"],
+["离","lí","distante de"],["两","liǎng","dois (quantidade)"],["路","lù","estrada / caminho"],
+["旅游","lǚyóu","viajar / turismo"],["卖","mài","vender"],["慢","màn","devagar"],
+["忙","máng","ocupado"],["每","měi","cada"],["妹妹","mèimei","irmã mais nova"],
+["门","mén","porta"],["男","nán","masculino / homem"],["您","nín","o senhor / a senhora"],
+["牛奶","niúnǎi","leite"],["女","nǚ","feminino / mulher"],["旁边","pángbiān","ao lado"],
+["跑步","pǎobù","correr"],["便宜","piányi","barato"],["票","piào","ingresso / passagem"],
+["妻子","qīzi","esposa"],["起床","qǐchuáng","levantar-se"],["千","qiān","mil"],
+["铅笔","qiānbǐ","lápis"],["晴","qíng","ensolarado"],["去年","qùnián","ano passado"],
+["让","ràng","deixar / fazer com que"],["上班","shàngbān","ir trabalhar"],["身体","shēntǐ","corpo / saúde"],
+["生病","shēngbìng","adoecer"],["生日","shēngrì","aniversário"],["时间","shíjiān","tempo"],
+["事情","shìqing","assunto / coisa"],["手表","shǒubiǎo","relógio de pulso"],["手机","shǒujī","celular"],
+["说话","shuōhuà","falar / conversar"],["送","sòng","entregar / presentear"],["虽然","suīrán","embora"],
+["但是","dànshì","mas / porém"],["它","tā","ele/ela (coisa, animal)"],["踢足球","tī zúqiú","jogar futebol"],
+["题","tí","questão / problema (prova)"],["跳舞","tiàowǔ","dançar"],["外","wài","fora"],
+["完","wán","terminar"],["玩","wán","brincar / divertir-se"],["晚上","wǎnshang","noite"],
+["往","wǎng","em direção a"],["为什么","wèishénme","por quê"],["问","wèn","perguntar"],
+["问题","wèntí","pergunta / problema"],["西瓜","xīguā","melancia"],["希望","xīwàng","esperar / desejar"],
+["洗","xǐ","lavar"],["小时","xiǎoshí","hora (duração)"],["笑","xiào","rir / sorrir"],
+["新","xīn","novo"],["姓","xìng","sobrenome"],["休息","xiūxi","descansar"],
+["雪","xuě","neve"],["颜色","yánsè","cor"],["眼睛","yǎnjing","olhos"],
+["羊肉","yángròu","carne de carneiro"],["药","yào","remédio"],["要","yào","querer / precisar"],
+["也","yě","também"],["已经","yǐjīng","já"],["一起","yìqǐ","juntos"],
+["意思","yìsi","significado"],["因为","yīnwèi","porque"],["所以","suǒyǐ","por isso / então"],
+["阴","yīn","nublado"],["游泳","yóuyǒng","nadar"],["右边","yòubian","direita"],
+["远","yuǎn","longe"],["运动","yùndòng","exercício / esporte"],["再","zài","de novo"],
+["早上","zǎoshang","manhã"],["丈夫","zhàngfu","marido"],["找","zhǎo","procurar"],
+["着","zhe","partícula: ação contínua"],["真","zhēn","realmente"],["正在","zhèngzài","estar (fazendo agora)"],
+["知道","zhīdào","saber"],["准备","zhǔnbèi","preparar"],["走","zǒu","andar / ir embora"],
+["最","zuì","o mais"],["左边","zuǒbian","esquerda"]
+];
+
+const DECKS = { "1": DECK1, "2": DECK2, "all": DECK1.concat(DECK2) };
+const LVL_KEY = "zh-flash-lvl";
+let level = localStorage.getItem(LVL_KEY) || "1";
+if (!DECKS[level]) level = "1";
+const deck = () => DECKS[level];
+
 const KEY = "zh-flash-v1";
 let stats = {};
 try { stats = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { stats = {}; }
@@ -293,7 +373,8 @@ let current = null, lastHanzi = null, sRight = 0, sWrong = 0;
 
 // ponytail: sorteio ponderado simples — erros pesam mais, dominados quase saem; SRS real (Leitner/SM-2) se um dia precisar
 function pickCard() {
-  const weights = DECK.map(([h]) => {
+  const D = deck();
+  const weights = D.map(([h]) => {
     if (h === lastHanzi) return 0;
     const s = get(h);
     if (s.c === 0 && s.w === 0) return 3;        // nunca visto
@@ -302,11 +383,11 @@ function pickCard() {
   });
   let total = weights.reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
-  for (let i = 0; i < DECK.length; i++) {
+  for (let i = 0; i < D.length; i++) {
     r -= weights[i];
-    if (r <= 0) return DECK[i];
+    if (r <= 0) return D[i];
   }
-  return DECK[0];
+  return D[0];
 }
 
 const $ = id => document.getElementById(id);
@@ -346,9 +427,10 @@ $("btn-wrong").addEventListener("click", () => answer(false));
 
 // ---- stats view ----
 function renderStats() {
+  const D = deck();
   let total = 0, right = 0, seen = 0, mastered = 0;
   const missed = [];
-  for (const [h, p, m] of DECK) {
+  for (const [h, p, m] of D) {
     const s = get(h);
     const n = s.c + s.w;
     if (n > 0) seen++;
@@ -358,9 +440,9 @@ function renderStats() {
   }
   $("st-total").textContent = total;
   $("st-acc").textContent = total ? Math.round(right / total * 100) + "%" : "–";
-  $("st-seen").textContent = seen + " / " + DECK.length;
-  $("st-mastered").textContent = mastered + " / " + DECK.length;
-  $("st-bar").style.width = (mastered / DECK.length * 100) + "%";
+  $("st-seen").textContent = seen + " / " + D.length;
+  $("st-mastered").textContent = mastered + " / " + D.length;
+  $("st-bar").style.width = (mastered / D.length * 100) + "%";
 
   missed.sort((a, b) => b.w - a.w || a.c - b.c);
   const list = $("miss-list");
@@ -389,6 +471,22 @@ function switchTab(study) {
 }
 $("tab-study").addEventListener("click", () => switchTab(true));
 $("tab-stats").addEventListener("click", () => switchTab(false));
+
+// ---- level selector ----
+const lvlButtons = document.querySelectorAll(".levels button");
+function renderLevel() {
+  lvlButtons.forEach(b => b.classList.toggle("active", b.dataset.lvl === level));
+}
+lvlButtons.forEach(b => b.addEventListener("click", () => {
+  if (b.dataset.lvl === level) return;
+  level = b.dataset.lvl;
+  try { localStorage.setItem(LVL_KEY, level); } catch (e) {}
+  renderLevel();
+  lastHanzi = null;
+  showCard();
+  if ($("view-stats").classList.contains("hidden") === false) renderStats();
+}));
+renderLevel();
 
 showCard();
 </script>
